@@ -1,0 +1,102 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String            @id @default(cuid())
+  name                  String
+  email                 String            @unique
+  passwordHash          String?
+  avatar                String?
+  listeningStreakDays   Int               @default(1)
+  totalListeningMinutes Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  preferences           UserPreferences?
+  savedArticles         SavedArticle[]
+  listeningLogs         ListeningLog[]
+}
+
+model UserPreferences {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topics           String   // JSON string array e.g. ["Tech & AI", "Markets"]
+  briefingDuration Int      @default(7) // 3, 7, 15
+  preferredHostId  String   @default("alex-tech")
+  profession       String   @default("Developer & Founder")
+  language         String   @default("English (US)")
+  deliverySchedule String   @default("08:00 AM (Morning)")
+  autoPlay         Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+model HostVoice {
+  id          String    @id
+  name        String
+  role        String
+  accent      String
+  avatar      String
+  sampleAudio String?
+  description String
+  articles    Article[]
+}
+
+model Article {
+  id                   String              @id @default(cuid())
+  title                String
+  subtitle             String
+  category             String              // Tech & AI, Markets, Science, World, Startups
+  source               String
+  publishedAt          String
+  readTimeMinutes      Int
+  audioDurationSeconds Int
+  imageUrl             String
+  hostId               String
+  host                 HostVoice           @relation(fields: [hostId], references: [id])
+  summary              String
+  keyTakeaways         String              // JSON string array
+  isTrending           Boolean             @default(false)
+  createdAt            DateTime            @default(now())
+
+  fullTranscript       TranscriptSegment[]
+  savedByUsers         SavedArticle[]
+  listeningLogs        ListeningLog[]
+}
+
+model TranscriptSegment {
+  id        String  @id @default(cuid())
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  speaker   String  // [Alex], [Maya], [Marcus]
+  startTime Float
+  endTime   Float
+  text      String
+}
+
+model SavedArticle {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  savedAt   DateTime @default(now())
+
+  @@unique([userId, articleId])
+}
+
+model ListeningLog {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  articleId       String
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  durationSeconds Int
+  listenedAt      DateTime @default(now())
+}
